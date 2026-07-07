@@ -9,7 +9,7 @@
 #include <afk_manager>
 #define REQUIRE_PLUGIN
 
-#define PLUGIN_VERSION "1.0.0"
+#define PLUGIN_VERSION "1.1"
 
 bool g_bAFKMLoaded;
 Handle g_hWarnTimer[MAXPLAYERS + 1];
@@ -97,11 +97,42 @@ public void MGE_OnPlayerArenaAdded(int client, int arena_index, int slot) {
   if (!g_bAFKMLoaded || !AFKM_IsClientAFK(client)) {
     return;
   }
+  if (!MGE_IsPlayerInArena(client)) {
+    return;
+  }
   StartWarnTimer(client);
 }
 
 public void MGE_OnPlayerArenaRemoved(int client, int arena_index) {
   StopWarnTimer(client);
+}
+
+public void MGE_On1v1MatchStart(int arena_index, int player1, int player2) {
+  StartWarnTimerIfAFK(player1);
+  StartWarnTimerIfAFK(player2);
+}
+
+public void MGE_On2v2MatchStart(int arena_index, int team1_player1, int team1_player2, int team2_player1, int team2_player2) {
+  StartWarnTimerIfAFK(team1_player1);
+  StartWarnTimerIfAFK(team1_player2);
+  StartWarnTimerIfAFK(team2_player1);
+  StartWarnTimerIfAFK(team2_player2);
+}
+
+// Covers the case where a queued/spectating player gets promoted into an
+// active slot when a new match starts. MGE_OnPlayerArenaAdded doesn't fire
+// for that promotion, so this catches an already-AFK player becoming active.
+void StartWarnTimerIfAFK(int client) {
+  if (client <= 0 || client > MaxClients || !IsClientInGame(client)) {
+    return;
+  }
+  if (!g_bAFKMLoaded || !AFKM_IsClientAFK(client)) {
+    return;
+  }
+  if (g_hWarnTimer[client] != null) {
+    return;
+  }
+  StartWarnTimer(client);
 }
 
 void StartWarnTimer(int client) {
